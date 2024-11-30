@@ -8,7 +8,7 @@ namespace Banking_Application
 {
     public abstract class Bank_Account
     {
-
+        // MAKE PRIVATE AND READ-ONLY?
         public String accountNo;
         public String name;
         public String address_line_1;
@@ -24,20 +24,23 @@ namespace Banking_Application
         
         public Bank_Account(String name, String address_line_1, String address_line_2, String address_line_3, String town, double balance)
         {
-            this.accountNo = System.Guid.NewGuid().ToString();
+            // VALIDATE AND SANITIZE
+            this.accountNo = System.Guid.NewGuid().ToString(); // DIRECTLY MODIFYABLE - ENCAPSULATION - VALIDATION AND FORMATTING
             this.name = name;
             this.address_line_1 = address_line_1;
             this.address_line_2 = address_line_2;
             this.address_line_3 = address_line_3;
             this.town = town;
-            this.balance = balance;
+            this.balance = balance; // DIRECTLY MODIFYABLE - ENCAPSULATION
         }
 
+        // AUTHORISATION!!!
         public void lodge(double amountIn)
         {
-
+            // VALIDATE
             balance += amountIn;
-
+            // EXCEPTION HANDLING??
+            // LOGGING AND AUDITING
         }
 
         public abstract bool withdraw(double amountToWithdraw);
@@ -46,7 +49,7 @@ namespace Banking_Application
 
         public override String ToString()
         {
-
+            // SHOULD NOT BE SHOWING SENSITIVE DATA
             return "\nAccount No: " + accountNo + "\n" +
             "Name: " + name + "\n" +
             "Address Line 1: " + address_line_1 + "\n" +

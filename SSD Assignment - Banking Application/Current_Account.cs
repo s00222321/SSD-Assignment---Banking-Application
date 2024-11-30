@@ -6,10 +6,11 @@ using System.Threading.Tasks;
 
 namespace Banking_Application
 {
-    public class Current_Account: Bank_Account
+    public sealed class Current_Account: Bank_Account // MARKED CLASS AS SEALED
     {
+        // USE LOGGING!!!!
 
-        public double overdraftAmount;
+        public double overdraftAmount; // PUBLIC? - CHANGE TO PRIVATE OR CONTROLLED SETTER
 
         public Current_Account(): base()
         {
@@ -18,6 +19,7 @@ namespace Banking_Application
         
         public Current_Account(String name, String address_line_1, String address_line_2, String address_line_3, String town, double balance, double overdraftAmount) : base(name, address_line_1, address_line_2, address_line_3, town, balance)
         {
+            // VALIDATION?? CHECK FOR NULLS?
             this.overdraftAmount = overdraftAmount;
         }
 
@@ -36,7 +38,7 @@ namespace Banking_Application
 
         }
 
-        public override double getAvailableFunds()
+        public override double getAvailableFunds() // PROTECTED OR INTERNAL?
         {
             return (base.balance + overdraftAmount);
         }
@@ -46,7 +48,7 @@ namespace Banking_Application
 
             return base.ToString() +
                 "Account Type: Current Account\n" +
-                "Overdraft Amount: " + overdraftAmount + "\n";
+                "Overdraft Amount: " + overdraftAmount + "\n"; // USE STRINGBUILDER?? DON'T GIVE SENSITIVE DATA
 
         }
 

@@ -25,7 +25,7 @@ namespace Banking_Application
                 Console.WriteLine("5. Make Withdrawal");
                 Console.WriteLine("6. Exit");
                 Console.WriteLine("CHOOSE OPTION:");
-                String option = Console.ReadLine();
+                String option = Console.ReadLine(); // ONLY A CERTAIN NUMBER OF TRIES NOT TO CRASH OUT??
                 
                 switch(option)
                 {
@@ -191,7 +191,7 @@ namespace Banking_Application
 
                         String accNo = dal.addBankAccount(ba);
 
-                        Console.WriteLine("New Account Number Is: " + accNo);
+                        Console.WriteLine("New Account Number Is: " + accNo); // DO NOT DO THIS!!!
 
                         break;
                     case "2":
@@ -240,7 +240,7 @@ namespace Banking_Application
 
                         if(ba is null) 
                         {
-                            Console.WriteLine("Account Does Not Exist");
+                            Console.WriteLine("Account Does Not Exist"); // SAY SOMETHING LIKE "Unable to process your request. Please try again." SO THEY WON'T TRY LOTS, BUT LOG CORRECT
                         }
                         else
                         {
@@ -250,13 +250,13 @@ namespace Banking_Application
                         break;
                     case "4": //Lodge
                         Console.WriteLine("Enter Account Number: ");
-                        accNo = Console.ReadLine();
+                        accNo = Console.ReadLine();  // SQL ATTACK - MUST BE VALIDATED, IMPLEMENT AUTHORISATION, MAKE SURE SENSISITVE DATA IS NOT LOGGED, RESOURCE MANAGEMENT?, ENCRYPT DATA IN TRANSIT
 
                         ba = dal.findBankAccountByAccNo(accNo);
 
                         if (ba is null)
                         {
-                            Console.WriteLine("Account Does Not Exist");
+                            Console.WriteLine("Account Does Not Exist"); // SAY SOMETHING LIKE "Unable to process your request. Please try again." SO THEY WON'T TRY LOTS, BUT LOG CORRECT
                         }
                         else
                         {
@@ -295,7 +295,7 @@ namespace Banking_Application
 
                         if (ba is null)
                         {
-                            Console.WriteLine("Account Does Not Exist");
+                            Console.WriteLine("Account Does Not Exist"); // SAY SOMETHING LIKE "Unable to process your request. Please try again." SO THEY WON'T TRY LOTS, BUT LOG CORRECT
                         }
                         else
                         {
