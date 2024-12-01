@@ -67,62 +67,63 @@ namespace Banking_Application
             }
         }
 
-        public void loadBankAccounts()
-        {
-            if (!File.Exists(Data_Access_Layer.databaseName))
-                initialiseDatabase();
-            else
-            {
+        //NO LONGER NECESSARY - GETTING INDIVIDUAL FILES NOW
+        //public void loadBankAccounts()
+        //{
+        //    if (!File.Exists(Data_Access_Layer.databaseName))
+        //        initialiseDatabase();
+        //    else
+        //    {
 
-                using (var connection = getDatabaseConnection())
-                {
-                    connection.Open();
-                    var command = connection.CreateCommand();
-                    command.CommandText = "SELECT * FROM Bank_Accounts";
-                    SqliteDataReader dr = command.ExecuteReader();
+        //        using (var connection = getDatabaseConnection())
+        //        {
+        //            connection.Open();
+        //            var command = connection.CreateCommand();
+        //            command.CommandText = "SELECT * FROM Bank_Accounts";
+        //            SqliteDataReader dr = command.ExecuteReader();
                     
-                    // VALIDATE THAT NOTHING HAS BEEN CHANGED
-                    // ADD LOGGING AND ERROR HANDLING
+        //            // VALIDATE THAT NOTHING HAS BEEN CHANGED
+        //            // ADD LOGGING AND ERROR HANDLING
 
-                    while(dr.Read())
-                    {
+        //            while(dr.Read())
+        //            {
 
-                        int accountType = dr.GetInt16(7);
+        //                int accountType = dr.GetInt16(7);
 
-                        if(accountType == Account_Type.Current_Account) // HASH/ENCYPT PII VALUES
-                        {
-                            Current_Account ca = new Current_Account();
-                            ca.accountNo = dr.GetString(0); // ADD COLUMN NAMES INSTEAD OF INDEXES
-                            ca.name = dr.GetString(1);
-                            ca.address_line_1 = dr.GetString(2);
-                            ca.address_line_2 = dr.GetString(3);
-                            ca.address_line_3 = dr.GetString(4);
-                            ca.town = dr.GetString(5);
-                            ca.balance = dr.GetDouble(6);
-                            ca.overdraftAmount = dr.GetDouble(8);
-                            accounts.Add(ca);
-                        }
-                        else
-                        {
-                            Savings_Account sa = new Savings_Account();
-                            sa.accountNo = dr.GetString(0);
-                            sa.name = dr.GetString(1);
-                            sa.address_line_1 = dr.GetString(2);
-                            sa.address_line_2 = dr.GetString(3);
-                            sa.address_line_3 = dr.GetString(4);
-                            sa.town = dr.GetString(5);
-                            sa.balance = dr.GetDouble(6);
-                            sa.interestRate = dr.GetDouble(9);
-                            accounts.Add(sa);
-                        }
+        //                if(accountType == Account_Type.Current_Account) // HASH/ENCYPT PII VALUES
+        //                {
+        //                    Current_Account ca = new Current_Account();
+        //                    ca.accountNo = dr.GetString(0); // ADD COLUMN NAMES INSTEAD OF INDEXES
+        //                    ca.name = dr.GetString(1);
+        //                    ca.address_line_1 = dr.GetString(2);
+        //                    ca.address_line_2 = dr.GetString(3);
+        //                    ca.address_line_3 = dr.GetString(4);
+        //                    ca.town = dr.GetString(5);
+        //                    ca.balance = dr.GetDouble(6);
+        //                    ca.overdraftAmount = dr.GetDouble(8);
+        //                    accounts.Add(ca);
+        //                }
+        //                else
+        //                {
+        //                    Savings_Account sa = new Savings_Account();
+        //                    sa.accountNo = dr.GetString(0);
+        //                    sa.name = dr.GetString(1);
+        //                    sa.address_line_1 = dr.GetString(2);
+        //                    sa.address_line_2 = dr.GetString(3);
+        //                    sa.address_line_3 = dr.GetString(4);
+        //                    sa.town = dr.GetString(5);
+        //                    sa.balance = dr.GetDouble(6);
+        //                    sa.interestRate = dr.GetDouble(9);
+        //                    accounts.Add(sa);
+        //                }
 
 
-                    }
+        //            }
 
-                }
+        //        }
 
-            }
-        }
+        //    }
+        //}
 
         public String addBankAccount(Bank_Account ba)
         {
@@ -132,12 +133,14 @@ namespace Banking_Application
             else
                 ba = (Savings_Account)ba;
 
-            accounts.Add(ba);
+            // NOW REDUNDANT
+            //accounts.Add(ba);
 
             using (var connection = getDatabaseConnection())
             {
                 // CHECK FOR NULL VALUES IN BANK ACCOUNT OBJECT
                 // ADD LOGGING AND ERROR HANDLING
+
                 connection.Open();
                 var command = connection.CreateCommand();
                 // USED PREPARED STATEMENTS TO PREVENT SQL INJECTION
@@ -267,25 +270,29 @@ namespace Banking_Application
         public bool closeBankAccount(String accNo) 
         {
             // ADD LOGGING AND ERROR HANDLING
-            Bank_Account toRemove = null;
-            
-            foreach (Bank_Account ba in accounts)
+
+            // NOW REDUNDANT
+            //Bank_Account toRemove = null;
+
+            //foreach (Bank_Account ba in accounts)
+            //{
+
+            //    if (ba.accountNo.Equals(accNo)) // CASE SENSITIVE
+            //    {
+            //        toRemove = ba;
+            //        break;
+            //    }
+
+            //}
+
+            //if (toRemove == null)
+            //    return false;
+            //else
+            //{
+            //accounts.Remove(toRemove);
+
+            if (findBankAccountByAccNo(accNo) != null)
             {
-
-                if (ba.accountNo.Equals(accNo)) // CASE SENSITIVE
-                {
-                    toRemove = ba;
-                    break;
-                }
-
-            }
-
-            if (toRemove == null)
-                return false;
-            else
-            {
-                accounts.Remove(toRemove);
-
                 using (var connection = getDatabaseConnection())
                 {
                     connection.Open();
@@ -293,38 +300,45 @@ namespace Banking_Application
                     //command.CommandText = "DELETE FROM Bank_Accounts WHERE accountNo = '" + toRemove.accountNo + "'";
                     // PREPARED STATEMENT FOR SQL INJECTION PREVENTION
                     command.CommandText = "DELETE FROM Bank_Accounts WHERE accountNo = @accountNo";
-                    command.Parameters.AddWithValue("@accountNo", toRemove.accountNo);
+                    command.Parameters.AddWithValue("@accountNo", accNo);
                     command.ExecuteNonQuery();
 
                 }
 
                 return true;
             }
+            else { return false; }
 
         }
 
         public bool lodge(String accNo, double amountToLodge)
         {
             // ADD LOGGING AND ERROR HANDLING
-            Bank_Account toLodgeTo = null;
 
-            foreach (Bank_Account ba in accounts)
+            // NOW REDUNDANT
+            //Bank_Account toLodgeTo = null;
+            //foreach (Bank_Account ba in accounts)
+            //{
+
+            //    if (ba.accountNo.Equals(accNo))
+            //    {
+            //        ba.lodge(amountToLodge);
+            //        toLodgeTo = ba;
+            //        break;
+            //    }
+
+            //}
+
+            //if (toLodgeTo == null)
+            //    return false;
+            //else
+            //{
+
+            Bank_Account toLodgeTo = findBankAccountByAccNo(accNo);
+
+            if (toLodgeTo != null)
             {
-
-                if (ba.accountNo.Equals(accNo)) // CASE SENSITIVE
-                {
-                    ba.lodge(amountToLodge);
-                    toLodgeTo = ba;
-                    break;
-                }
-
-            }
-
-            if (toLodgeTo == null)
-                return false;
-            else
-            {
-
+                toLodgeTo.lodge(amountToLodge);
                 using (var connection = getDatabaseConnection())
                 {
                     connection.Open();
@@ -333,41 +347,46 @@ namespace Banking_Application
                     //command.CommandText = "UPDATE Bank_Accounts SET balance = " + toLodgeTo.balance + " WHERE accountNo = '" + toLodgeTo.accountNo + "'";
                     command.CommandText = "UPDATE Bank_Accounts SET balance = @balance WHERE accountNo = @accountNo";
                     command.Parameters.AddWithValue("@balance", toLodgeTo.balance);
-                    command.Parameters.AddWithValue("@accountNo", toLodgeTo.accountNo);
+                    command.Parameters.AddWithValue("@accountNo", accNo);
 
                     command.ExecuteNonQuery();
-
                 }
-
                 return true;
             }
-
+            else { return false; }
+            // CALL GB COLLECTOR??
         }
 
         public bool withdraw(String accNo, double amountToWithdraw)
         {
             // ADD LOGGING AND ERROR HANDLING
 
-            Bank_Account toWithdrawFrom = null;
+            //Bank_Account toWithdrawFrom = null;
+            //bool result = false;
+
+            //foreach (Bank_Account ba in accounts)
+            //{
+
+            //    if (ba.accountNo.Equals(accNo))
+            //    {
+            //        result = ba.withdraw(amountToWithdraw);
+            //        toWithdrawFrom = ba;
+            //        break;
+            //    }
+
+            //}
+
+            //if (toWithdrawFrom == null || result == false)
+            //    return false;
+            //else
+            //{
+
             bool result = false;
+            Bank_Account toWithdrawFrom = findBankAccountByAccNo(accNo);
+            result = toWithdrawFrom.withdraw(amountToWithdraw);
 
-            foreach (Bank_Account ba in accounts)
+            if (toWithdrawFrom != null || result == false)
             {
-
-                if (ba.accountNo.Equals(accNo))
-                {
-                    result = ba.withdraw(amountToWithdraw);
-                    toWithdrawFrom = ba;
-                    break;
-                }
-
-            }
-
-            if (toWithdrawFrom == null || result == false)
-                return false;
-            else
-            {
-
                 using (var connection = getDatabaseConnection())
                 {
                     connection.Open();
@@ -384,8 +403,7 @@ namespace Banking_Application
 
                 return true;
             }
-
+            else { return false; }  
         }
-
     }
 }
