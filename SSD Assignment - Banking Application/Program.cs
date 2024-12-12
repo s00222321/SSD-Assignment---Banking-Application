@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Net;
 using System.Collections.Generic;
 using System.Linq;
+using System.DirectoryServices.AccountManagement;
 
 namespace Banking_Application
 {
@@ -15,6 +17,55 @@ namespace Banking_Application
 
             do
             {
+
+                // get user to log in
+                //Console.WriteLine("Log in");
+                //Console.Write("Username: ");
+                //String username = Console.ReadLine();
+                //Console.Write("Password: ");
+                //String password = Console.ReadLine();
+                //Console.Clear();
+
+                string username = "Test";//SAM Name Of User Account
+                string password = "Password123*";
+
+                string domainName = "ITSLIGO.LAN"; // hide somehow
+                string groupName = "Bank Teller"; //User Group Name HIDE?
+
+                // check if they are authorised
+
+                // Verify Validity Of User Credentials
+                PrincipalContext domainContext = new PrincipalContext(ContextType.Domain, domainName);
+                bool validCreds = domainContext.ValidateCredentials(username, password);
+
+                //Verify Group Membership Of User Account
+
+                UserPrincipal userPrincipal = UserPrincipal.FindByIdentity(domainContext, IdentityType.SamAccountName, username);
+                bool isGroupMember = false;
+
+                if (userPrincipal != null)
+                    isGroupMember = userPrincipal.IsMemberOf(domainContext, IdentityType.SamAccountName, groupName);//Throws Exception If User Principal Is Null
+
+                //Output
+
+                if (validCreds && isGroupMember)
+                {
+                    Console.WriteLine("User Is Authorized To Perform Access Control Protected Action");
+                }
+
+                else
+                {
+                    Console.WriteLine("User Is Not Authorized To Perform This Action.");
+                    if (validCreds == false)
+                        Console.WriteLine("Invalid User Credentials Provided.");
+                    if (isGroupMember == false)
+                        Console.WriteLine("User Is Not A Member Of The Authorized User Group.");
+                }
+                // then wipe the memory
+                username = null;
+                password = null;
+                domainName = null;
+
 
                 Console.WriteLine("");
                 Console.WriteLine("***Banking Application Menu***");
