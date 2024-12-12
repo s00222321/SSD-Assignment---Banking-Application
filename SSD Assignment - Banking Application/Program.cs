@@ -10,25 +10,31 @@ namespace Banking_Application
     {
         public static void Main(string[] args)
         {
-            
+
             Data_Access_Layer dal = Data_Access_Layer.getInstance();
             //dal.loadBankAccounts(); // REMOVED FROM DAL
             bool running = true;
+            bool isGroupMember = false;
+            bool isAdminGroupMember = false;
+            int loginCount = 0;
 
-            do
+            string domainName = "ITSLIGO.LAN"; // hide somehow
+            string groupName = "Bank Teller"; //User Group Name HIDE?
+            string adminGroupName = "Bank Teller Administrator";
+
+            String username = null;
+            String password = null;
+
+            while ((loginCount < 3) && (!isAdminGroupMember && !isGroupMember))
             {
-
+                loginCount++;
                 // get user to log in
                 Console.WriteLine("Log in");
                 Console.Write("Username: ");
-                String username = Console.ReadLine();
+                username = Console.ReadLine();
                 Console.Write("Password: ");
-                String password = Console.ReadLine();
+                password = Console.ReadLine();
                 Console.Clear();
-
-                string domainName = "ITSLIGO.LAN"; // hide somehow
-                string groupName = "Bank Teller"; //User Group Name HIDE?
-                string adminGroupName = "Bank Teller Administration";
 
                 // check if they are authorised
 
@@ -39,8 +45,8 @@ namespace Banking_Application
                 //Verify Group Membership Of User Account
 
                 UserPrincipal userPrincipal = UserPrincipal.FindByIdentity(domainContext, IdentityType.SamAccountName, username);
-                bool isGroupMember = false;
-                bool isAdminGroupMember = false;
+                isGroupMember = false;
+                isAdminGroupMember = false;
 
                 if (userPrincipal != null)
                 {
@@ -48,27 +54,40 @@ namespace Banking_Application
                     isAdminGroupMember = userPrincipal.IsMemberOf(domainContext, IdentityType.SamAccountName, adminGroupName);//Throws Exception If User Principal Is Null
                 }
 
-                //Output
-
-                if (validCreds && (isGroupMember || isAdminGroupMember))
+                if (validCreds && isGroupMember)
                 {
-                    Console.WriteLine("Log in successful - User Is Authorized");
+                    Console.WriteLine("User Is Authorized To Perform Access Control Protected Action");
                 }
-
                 else
                 {
-                    Console.WriteLine("Log in failed - User Is Not Authorized");
+                    Console.WriteLine("User Is Not Authorized To Perform This Action.");
                     if (validCreds == false)
                         Console.WriteLine("Invalid User Credentials Provided.");
                     if (isGroupMember == false)
                         Console.WriteLine("User Is Not A Member Of The Authorized User Group.");
-                }
-                // then wipe the memory
-                username = null;
-                password = null;
-                domainName = null;
 
-                if (validCreds && (isGroupMember || isAdminGroupMember)) // ONLY CONTINUE IF USERS ARE AUTHORISED
+                    if (loginCount < 3)
+                    {
+                        Console.WriteLine("Please try again");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Max number of log in attempts. Program termintaing");
+                        running = false;
+                    }
+                }
+            }
+
+            //Output
+
+            // then wipe the memory
+            username = null;
+            password = null;
+            domainName = null;
+
+            if (isGroupMember || isAdminGroupMember) // ONLY CONTINUE IF USERS ARE AUTHORISED
+            {
+                do
                 {
                     Console.WriteLine("");
                     Console.WriteLine("***Banking Application Menu***");
@@ -401,17 +420,9 @@ namespace Banking_Application
                             Console.WriteLine("INVALID OPTION CHOSEN - PLEASE TRY AGAIN");
                             break;
                     }
-                }
-                else
-                {
-                    Console.WriteLine("Log in failed - User Is Not Authorized");
-                    if (validCreds == false)
-                        Console.WriteLine("Invalid User Credentials Provided.");
-                    if (isGroupMember == false)
-                        Console.WriteLine("User Is Not A Member Of The Authorized User Group.");
-                }
-            } while (running != false);
 
+                } while (running != false);
+            }
         }
 
     }
