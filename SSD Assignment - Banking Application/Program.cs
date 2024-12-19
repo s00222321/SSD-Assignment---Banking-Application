@@ -3,6 +3,9 @@ using System.Net;
 using System.Collections.Generic;
 using System.Linq;
 using System.DirectoryServices.AccountManagement;
+using SSD_Assignment___Banking_Application;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Banking_Application
 {
@@ -10,13 +13,40 @@ namespace Banking_Application
     {
         public static void Main(string[] args)
         {
+            //string text = "Hello World";
+            //byte[] plaintextData = Encoding.ASCII.GetBytes(text);
+
+            //Console.WriteLine("Plaintext: " + text);
+
+            //// Generate random key and IV
+            //byte[] key = new byte[16];
+            //byte[] iv = new byte[16];
+            //RandomNumberGenerator.Fill(key);
+            //RandomNumberGenerator.Fill(iv);
+
+            //Console.WriteLine("Key (Base64): " + Convert.ToBase64String(key));
+            //Console.WriteLine("IV (Base64): " + Convert.ToBase64String(iv));
+
+            //// Create CryptoUtils object
+            //Cryptography_Utilities cryptoUtils = new Cryptography_Utilities(key, iv);
+
+            //// Encrypt and display ciphertext
+            //byte[] encryptedData = cryptoUtils.Encrypt(plaintextData);
+            //Console.WriteLine("Encrypted Data (Base64): " + Convert.ToBase64String(encryptedData));
+
+            //// Decrypt and display plaintext
+            //byte[] decryptedData = cryptoUtils.Decrypt(encryptedData);
+            //string decryptedText = Encoding.ASCII.GetString(decryptedData);
+            //Console.WriteLine("Decrypted Text: " + decryptedText);
 
             Data_Access_Layer dal = Data_Access_Layer.getInstance();
             //dal.loadBankAccounts(); // REMOVED FROM DAL
+            string accNo;
             bool running = true;
             bool isGroupMember = false;
             bool isAdminGroupMember = false;
             int loginCount = 0;
+            loginCount = 4; isGroupMember = true; isAdminGroupMember = true; // REMOVE BEFORE SUBMITTING!!!!!!!!!!!!!!
 
             string domainName = "ITSLIGO.LAN"; // hide somehow
             string groupName = "Bank Teller"; //User Group Name HIDE?
@@ -72,7 +102,7 @@ namespace Banking_Application
                     }
                     else
                     {
-                        Console.WriteLine("Max number of log in attempts. Program termintaing");
+                        Console.WriteLine("Max number of log in attempts. Program terminating");
                         running = false;
                     }
                 }
@@ -262,9 +292,9 @@ namespace Banking_Application
                                 ba = new Savings_Account(name, addressLine1, addressLine2, addressLine3, town, balance, interestRate);
                             }
 
-                            String accNo = dal.addBankAccount(ba);
-
-                            Console.WriteLine("New Account Number Is: " + accNo); // DO NOT DO THIS!!!
+                            if (dal.addBankAccount(ba))
+                                Console.WriteLine("New Account Has Been Added");
+                            //Console.WriteLine("New Account Number Is: " + accNo); // DO NOT DO THIS!!!
 
                             break;
                         case "2":
