@@ -13,31 +13,22 @@ namespace Banking_Application
     {
         public static void Main(string[] args)
         {
-            //string text = "Hello World";
-            //byte[] plaintextData = Encoding.ASCII.GetBytes(text);
+            Logger.SetupEventSource();
 
-            //Console.WriteLine("Plaintext: " + text);
+            // Example transaction details
+            string bankTellerName = "John Doe";
+            string accountNumber = "123456789";
+            string accountHolderName = "Jane Smith";
+            string transactionType = "Withdrawal";
+            string deviceIdentifier = Logger.GetDeviceIdentifier(); // Windows SID as an example
+            DateTime transactionDateTime = DateTime.Now;
+            string reason = ""; // Optional, only for transactions over €10,000
+            string appMetadata = "SSD Banking Application v1.0.0 (Hash: ABC123)";
 
-            //// Generate random key and IV
-            //byte[] key = new byte[16];
-            //byte[] iv = new byte[16];
-            //RandomNumberGenerator.Fill(key);
-            //RandomNumberGenerator.Fill(iv);
-
-            //Console.WriteLine("Key (Base64): " + Convert.ToBase64String(key));
-            //Console.WriteLine("IV (Base64): " + Convert.ToBase64String(iv));
-
-            //// Create CryptoUtils object
-            //Cryptography_Utilities cryptoUtils = new Cryptography_Utilities(key, iv);
-
-            //// Encrypt and display ciphertext
-            //byte[] encryptedData = cryptoUtils.Encrypt(plaintextData);
-            //Console.WriteLine("Encrypted Data (Base64): " + Convert.ToBase64String(encryptedData));
-
-            //// Decrypt and display plaintext
-            //byte[] decryptedData = cryptoUtils.Decrypt(encryptedData);
-            //string decryptedText = Encoding.ASCII.GetString(decryptedData);
-            //Console.WriteLine("Decrypted Text: " + decryptedText);
+            // Log the transaction
+            //Logger.LogTransaction(bankTellerName, accountNumber, accountHolderName,
+            //                      transactionType, deviceIdentifier,
+            //                      transactionDateTime, reason, appMetadata);
 
             Data_Access_Layer dal = Data_Access_Layer.getInstance();
             //dal.loadBankAccounts(); // REMOVED FROM DAL
@@ -87,6 +78,7 @@ namespace Banking_Application
                 if (validCreds && isGroupMember)
                 {
                     Console.WriteLine("User Is Authorized To Perform Access Control Protected Action");
+                    // LOG SUCCESSFUL LOGIN
                 }
                 else
                 {
@@ -105,6 +97,8 @@ namespace Banking_Application
                         Console.WriteLine("Max number of log in attempts. Program terminating");
                         running = false;
                     }
+
+                    // LOG FAILED LOGIN
                 }
             }
 
@@ -176,7 +170,7 @@ namespace Banking_Application
                             {
 
                                 if (loopCount > 0)
-                                    Console.WriteLine("INVALID ÀDDRESS LINE 1 ENTERED - PLEASE TRY AGAIN");
+                                    Console.WriteLine("INVALID ADDRESS LINE 1 ENTERED - PLEASE TRY AGAIN");
 
                                 Console.WriteLine("Enter Address Line 1: ");
                                 addressLine1 = Console.ReadLine();
@@ -296,6 +290,8 @@ namespace Banking_Application
                                 Console.WriteLine("New Account Has Been Added");
                             //Console.WriteLine("New Account Number Is: " + accNo); // DO NOT DO THIS!!!
 
+                            // LOG NEW ACCOUNT CREATION
+
                             break;
                         case "2":
                             if (isAdminGroupMember) // ONLY ALLOW IF USER IS ADMIN
@@ -326,6 +322,7 @@ namespace Banking_Application
                                             case "Y":
                                             case "y":
                                                 dal.closeBankAccount(accNo);
+                                                // LOG ACCOUNT CLOSURE
                                                 break;
                                             case "N":
                                             case "n":
@@ -340,6 +337,7 @@ namespace Banking_Application
                             else
                             {
                                 Console.WriteLine("You do not have permissions to carry out this action");
+                                // LOG UNAUTHORISED ACTION
                             }
 
                             break;
@@ -356,12 +354,13 @@ namespace Banking_Application
                             else
                             {
                                 Console.WriteLine(ba.ToString());
+                                // LOG ACCOUNT INFORMATION VIEWED
                             }
 
                             break;
                         case "4": //Lodge
                             Console.WriteLine("Enter Account Number: ");
-                            accNo = Console.ReadLine();  // SQL ATTACK - MUST BE VALIDATED, IMPLEMENT AUTHORISATION, MAKE SURE SENSISITVE DATA IS NOT LOGGED, RESOURCE MANAGEMENT?, ENCRYPT DATA IN TRANSIT
+                            accNo = Console.ReadLine();  // SQL ATTACK - MUST BE VALIDATED MAKE SURE SENSISITVE DATA IS NOT LOGGED, RESOURCE MANAGEMENT?, ENCRYPT DATA IN TRANSIT
 
                             ba = dal.findBankAccountByAccNo(accNo);
 
@@ -381,6 +380,7 @@ namespace Banking_Application
                                         Console.WriteLine("INVALID AMOUNT ENTERED - PLEASE TRY AGAIN");
 
                                     Console.WriteLine("Enter Amount To Lodge: ");
+                                    // make sure ammount to lodge is greater than 0
                                     String amountToLodgeString = Console.ReadLine();
 
                                     try
@@ -396,6 +396,7 @@ namespace Banking_Application
                                 } while (amountToLodge < 0);
 
                                 dal.lodge(accNo, amountToLodge);
+                                // LOG LODGEMENT
                             }
                             break;
                         case "5": //Withdraw
@@ -436,10 +437,16 @@ namespace Banking_Application
 
                                 bool withdrawalOK = dal.withdraw(accNo, amountToWithdraw);
 
-                                if (withdrawalOK == false)
+                                //if (withdrawalOK == false)
+                                if (!withdrawalOK)
                                 {
 
                                     Console.WriteLine("Insufficient Funds Available.");
+                                    // LOG INSUFFICIENT FUNDS
+                                }
+                                else
+                                {
+                                    // LOG WITHDRAWAL
                                 }
                             }
                             break;

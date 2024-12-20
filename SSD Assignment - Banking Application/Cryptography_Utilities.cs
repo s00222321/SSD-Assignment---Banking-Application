@@ -12,8 +12,7 @@ namespace SSD_Assignment___Banking_Application
     {
         internal readonly Aes aes;
         private readonly HMACSHA256 hmac;
-        private const string CryptoKeyName = "BankingAppKey";
-        private const string KeyFilePath = "bankingAppKey.dat";
+        private const string KeyFilePath = "bankingAppKey.dat"; // PUT INTO ENV FILE
 
         public Cryptography_Utilities()
         {
