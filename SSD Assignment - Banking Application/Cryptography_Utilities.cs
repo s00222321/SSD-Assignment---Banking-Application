@@ -13,42 +13,61 @@ namespace SSD_Assignment___Banking_Application
         internal readonly Aes aes;
         private readonly HMACSHA256 hmac;
         private const string CryptoKeyName = "BankingAppKey";
+        private const string KeyFilePath = "bankingAppKey.dat";
 
         public Cryptography_Utilities()
         {
-            CngProvider keyStorageProvider = CngProvider.MicrosoftSoftwareKeyStorageProvider;
+            aes = Aes.Create();
+            byte[] key = RetrieveOrGenerateKey(KeyFilePath);
+            aes.KeySize = 128;
+            aes.Key = key;
+            aes.Mode = CipherMode.CBC;
+            aes.Padding = PaddingMode.PKCS7;
 
-            // Check if the key exists; if not, create it
-            if (!CngKey.Exists(CryptoKeyName, keyStorageProvider))
-            {
-                CngKeyCreationParameters keyCreationParameters = new CngKeyCreationParameters
-                {
-                    Provider = keyStorageProvider
-                };
-
-                // Create the named key
-                CngKey.Create(new CngAlgorithm("AES"), CryptoKeyName, keyCreationParameters);
-            }
-
-            aes = new AesCng(CryptoKeyName, keyStorageProvider)
-            {
-                Mode = CipherMode.CBC,
-                Padding = PaddingMode.PKCS7
-            };
-
-            byte[] aesKey = aes.Key;
-            byte[] hmacKey = DeriveKey(aesKey, "HMAC");
-
-            hmac = new HMACSHA256(hmacKey);
+            hmac = new HMACSHA256(key);
         }
 
-        private byte[] DeriveKey(byte[] masterKey, string purpose)
+        public static byte[] GenerateSymmetricKey()
         {
-            using (var hmac = new HMACSHA256(masterKey))
+            using (Aes aesAlg = Aes.Create())
             {
-                return hmac.ComputeHash(Encoding.UTF8.GetBytes(purpose));
+                aesAlg.GenerateKey();
+                return aesAlg.Key;
             }
         }
+
+        // Store the key securely using DPAPI
+        public static void StoreKey(byte[] key, string filePath)
+        {
+            byte[] protectedKey = ProtectedData.Protect(key, null, DataProtectionScope.CurrentUser);
+            File.WriteAllBytes(filePath, protectedKey);
+        }
+
+        // Retrieve the key: check if it exists, otherwise create and store a new one
+        public static byte[] RetrieveOrGenerateKey(string filePath)
+        {
+            if (File.Exists(filePath))
+            {
+                // If the key file exists, retrieve and unprotect the key
+                return RetrieveKey(filePath);
+            }
+            else
+            {
+                // If the key file does not exist, generate a new key and store it
+                byte[] newKey = GenerateSymmetricKey();
+                StoreKey(newKey, filePath);
+                return newKey;
+            }
+        }
+
+        // Retrieve the key securely using DPAPI
+        private static byte[] RetrieveKey(string filePath)
+        {
+            byte[] protectedKey = File.ReadAllBytes(filePath);
+            byte[] key = ProtectedData.Unprotect(protectedKey, null, DataProtectionScope.CurrentUser);
+            return key;
+        }
+
 
         public byte[] Encrypt(string plaintextData)
         {
@@ -88,7 +107,6 @@ namespace SSD_Assignment___Banking_Application
 
             // Extract the IV and ciphertext from the combined data
             Buffer.BlockCopy(combinedData, 0, iv, 0, ivLength); // Extract the IV
-            Console.WriteLine(iv);
             Buffer.BlockCopy(combinedData, ivLength, ciphertextData, 0, ciphertextData.Length); // Extract the ciphertext
 
             // Decrypt the ciphertext using the extracted IV
