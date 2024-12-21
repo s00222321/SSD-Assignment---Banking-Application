@@ -22,7 +22,6 @@ namespace SSD_Assignment___Banking_Application
             string accountNumber,
             string accountHolderName,
             string transactionType,
-            string deviceIdentifier,
             DateTime transactionDateTime,
             string reason,
             string appMetadata)
@@ -37,7 +36,7 @@ namespace SSD_Assignment___Banking_Application
                     Transaction Type: {transactionType}
 
                 WHERE:
-                    Device Identifier: {deviceIdentifier}
+                    Device Identifier: {GetDeviceIdentifier()}
 
                 WHEN:
                     Date/Time: {transactionDateTime:yyyy-MM-dd HH:mm:ss}

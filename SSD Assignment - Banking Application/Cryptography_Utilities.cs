@@ -171,17 +171,17 @@ namespace SSD_Assignment___Banking_Application
             // Compute the hash value directly using plaintext fields
             byte[] updatedHashValue = ComputeHash(
                 CombineByteArrays(
-                    Encoding.UTF8.GetBytes(account.accountNo),
-                    Encoding.UTF8.GetBytes(account.name),
-                    account.address_line_1 != null ? Encoding.UTF8.GetBytes(account.address_line_1) : new byte[0],
-                    account.address_line_2 != null ? Encoding.UTF8.GetBytes(account.address_line_2) : new byte[0],
-                    account.address_line_3 != null ? Encoding.UTF8.GetBytes(account.address_line_3) : new byte[0],
-                    Encoding.UTF8.GetBytes(account.town),
-                    BitConverter.GetBytes(account.balance),
+                    Encoding.UTF8.GetBytes(account.AccountNo),
+                    Encoding.UTF8.GetBytes(account.Name),
+                    account.AddressLine1 != null ? Encoding.UTF8.GetBytes(account.AddressLine1) : new byte[0],
+                    account.AddressLine2 != null ? Encoding.UTF8.GetBytes(account.AddressLine2) : new byte[0],
+                    account.AddressLine3 != null ? Encoding.UTF8.GetBytes(account.AddressLine3) : new byte[0],
+                    Encoding.UTF8.GetBytes(account.Town),
+                    BitConverter.GetBytes(account.Balance),
                     BitConverter.GetBytes(account.GetType() == typeof(Current_Account) ? 1 : 2),
-                    BitConverter.GetBytes((account is Current_Account ca) ? ca.overdraftAmount : 0.0), // Handle nulls
-                    BitConverter.GetBytes((account is Savings_Account sa) ? sa.interestRate : 0.0),
-                    ComputeHash(account.accountNo) // Compute hash of account number
+                    BitConverter.GetBytes((account is Current_Account ca) ? ca.OverdraftAmount : 0.0), // Handle nulls
+                    BitConverter.GetBytes((account is Savings_Account sa) ? sa.InterestRate : 0.0),
+                    ComputeHash(account.AccountNo) // Compute hash of account number
                 )
             );
             return updatedHashValue;

@@ -188,7 +188,7 @@ namespace Banking_Application
             try
             {
                 // Check for null fields in the Bank_Account object
-                if (ba == null || string.IsNullOrEmpty(ba.accountNo) || string.IsNullOrEmpty(ba.name) || string.IsNullOrEmpty(ba.town))
+                if (ba == null || string.IsNullOrEmpty(ba.AccountNo) || string.IsNullOrEmpty(ba.Name) || string.IsNullOrEmpty(ba.Town))
                 {
                     throw new ArgumentException("Bank account data is incomplete. Account No, Name, and Town are required.");
                 }
@@ -198,15 +198,15 @@ namespace Banking_Application
                 else
                     ba = (Savings_Account)ba;
 
-                Console.WriteLine(ba.accountNo); // REMOVE THIS
+                Console.WriteLine(ba.AccountNo); // REMOVE THIS
 
                 // Encrypt each field
-                byte[] encryptedAccountNo = cryptoUtils.Encrypt(ba.accountNo);
-                byte[] encryptedName = cryptoUtils.Encrypt(ba.name);
-                byte[] encryptedAddressLine1 = cryptoUtils.Encrypt(ba.address_line_1);
-                byte[] encryptedAddressLine2 = cryptoUtils.Encrypt(ba.address_line_2);
-                byte[] encryptedAddressLine3 = cryptoUtils.Encrypt(ba.address_line_3);
-                byte[] encryptedTown = cryptoUtils.Encrypt(ba.town);
+                byte[] encryptedAccountNo = cryptoUtils.Encrypt(ba.AccountNo);
+                byte[] encryptedName = cryptoUtils.Encrypt(ba.Name);
+                byte[] encryptedAddressLine1 = cryptoUtils.Encrypt(ba.AddressLine1);
+                byte[] encryptedAddressLine2 = cryptoUtils.Encrypt(ba.AddressLine2);
+                byte[] encryptedAddressLine3 = cryptoUtils.Encrypt(ba.AddressLine3);
+                byte[] encryptedTown = cryptoUtils.Encrypt(ba.Town);
 
                 // Compute the hash for the entry
                 byte[] hashValue = cryptoUtils.GenerateHashForSendingToDB(ba);
@@ -229,23 +229,23 @@ namespace Banking_Application
                     command.Parameters.AddWithValue("@addressLine2", encryptedAddressLine2);
                     command.Parameters.AddWithValue("@addressLine3", encryptedAddressLine3);
                     command.Parameters.AddWithValue("@town", encryptedTown);
-                    command.Parameters.AddWithValue("@balance", ba.balance);
+                    command.Parameters.AddWithValue("@balance", ba.Balance);
                     command.Parameters.AddWithValue("@accountType", ba.GetType() == typeof(Current_Account) ? 1 : 2);
                     command.Parameters.AddWithValue("@hashValue", hashValue);
-                    command.Parameters.AddWithValue("@hashAccountNo", cryptoUtils.ComputeHash(ba.accountNo));
+                    command.Parameters.AddWithValue("@hashAccountNo", cryptoUtils.ComputeHash(ba.AccountNo));
 
                     // Add type-specific parameters
                     if (ba.GetType() == typeof(Current_Account))
                     {
                         Current_Account ca = (Current_Account)ba;
-                        command.Parameters.AddWithValue("@overdraftAmount", ca.overdraftAmount);
+                        command.Parameters.AddWithValue("@overdraftAmount", ca.OverdraftAmount);
                         command.Parameters.AddWithValue("@interestRate", DBNull.Value);
                     }
                     else
                     {
                         Savings_Account sa = (Savings_Account)ba;
                         command.Parameters.AddWithValue("@overdraftAmount", DBNull.Value);
-                        command.Parameters.AddWithValue("@interestRate", sa.interestRate);
+                        command.Parameters.AddWithValue("@interestRate", sa.InterestRate);
                     }
 
                     command.ExecuteNonQuery();
@@ -331,7 +331,6 @@ namespace Banking_Application
                             string? decryptedAddressLine3 = encryptedAddressLine3 != null ? Encoding.UTF8.GetString(cryptoUtils.Decrypt(encryptedAddressLine3)) : null;
                             string decryptedTown = Encoding.UTF8.GetString(cryptoUtils.Decrypt(encryptedTown));
 
-                            Console.WriteLine(decryptedAccountNo);
                             // Combine decrypted fields for hash computation
                             byte[] computedHashValue = cryptoUtils.ComputeHash(
                                 cryptoUtils.CombineByteArrays(
@@ -360,28 +359,28 @@ namespace Banking_Application
                             {
                                 return new Current_Account
                                 {
-                                    accountNo = decryptedAccountNo,
-                                    name = decryptedName,
-                                    address_line_1 = decryptedAddressLine1,
-                                    address_line_2 = decryptedAddressLine2,
-                                    address_line_3 = decryptedAddressLine3,
-                                    town = decryptedTown,
-                                    balance = balance,
-                                    overdraftAmount = overdraftAmount ?? 0.0
+                                    AccountNo = decryptedAccountNo,
+                                    Name = decryptedName,
+                                    AddressLine1 = decryptedAddressLine1,
+                                    AddressLine2 = decryptedAddressLine2,
+                                    AddressLine3 = decryptedAddressLine3,
+                                    Town = decryptedTown,
+                                    Balance = balance,
+                                    OverdraftAmount = overdraftAmount ?? 0.0
                                 };
                             }
                             else if (accountType == Account_Type.Savings_Account)
                             {
                                 return new Savings_Account
                                 {
-                                    accountNo = decryptedAccountNo,
-                                    name = decryptedName,
-                                    address_line_1 = decryptedAddressLine1,
-                                    address_line_2 = decryptedAddressLine2,
-                                    address_line_3 = decryptedAddressLine3,
-                                    town = decryptedTown,
-                                    balance = balance,
-                                    interestRate = interestRate ?? 0.0
+                                    AccountNo = decryptedAccountNo,
+                                    Name = decryptedName,
+                                    AddressLine1 = decryptedAddressLine1,
+                                    AddressLine2 = decryptedAddressLine2,
+                                    AddressLine3 = decryptedAddressLine3,
+                                    Town = decryptedTown,
+                                    Balance = balance,
+                                    InterestRate = interestRate ?? 0.0
                                 };
                             }
                             // LOGGING
@@ -520,7 +519,7 @@ namespace Banking_Application
                         connection.Open();
                         var command = connection.CreateCommand();
                         command.CommandText = @"UPDATE Encrypted_Bank_Accounts SET balance = @balance, hashValue = @hashValue WHERE hashAccountNo = @hashAccountNo";
-                        command.Parameters.AddWithValue("@balance", toLodgeTo.balance);
+                        command.Parameters.AddWithValue("@balance", toLodgeTo.Balance);
                         command.Parameters.AddWithValue("@hashValue", updatedHashValue);
                         command.Parameters.AddWithValue("@hashAccountNo", cryptoUtils.ComputeHash(accNo));
                         command.ExecuteNonQuery();
@@ -575,7 +574,6 @@ namespace Banking_Application
 
         public bool withdraw(String accNo, double amountToWithdraw)
         {
-            // ADD LOGGING AND ERROR HANDLING
             bool result = false;
             Bank_Account toWithdrawFrom = findBankAccountByAccNo(accNo);
             result = toWithdrawFrom.withdraw(amountToWithdraw);
@@ -590,9 +588,9 @@ namespace Banking_Application
                     {
                         connection.Open();
                         var command = connection.CreateCommand();
-                        // USE PREPARED STATEMENT TO AVOID SQL INJECTION
+                        // Use prepared statement to prevent SQL injection
                         command.CommandText = "UPDATE Encrypted_Bank_Accounts SET balance = @balance, hashValue = @hashValue WHERE hashAccountNo = @hashAccountNo";
-                        command.Parameters.AddWithValue("@balance", toWithdrawFrom.balance);
+                        command.Parameters.AddWithValue("@balance", toWithdrawFrom.Balance);
                         command.Parameters.AddWithValue("@hashValue", updatedHashValue);
                         command.Parameters.AddWithValue("@hashAccountNo", cryptoUtils.ComputeHash(accNo));
                         command.ExecuteNonQuery();
@@ -601,7 +599,6 @@ namespace Banking_Application
                 }
                 else { return false; }
             }
-
             catch (SqliteException sqlEx)
             {
                 // Handle database-specific errors
