@@ -71,7 +71,7 @@ namespace SSD_Assignment___Banking_Application
             byte[] byteString = Encoding.UTF8.GetBytes(plaintextData);
 
             // Generate a random IV
-            byte[] iv = new byte[aes.BlockSize / 8]; // AES block size is typically 128 bits
+            byte[] iv = new byte[aes.BlockSize / 8]; // AES block size is 128 bits
             using (var rng = RandomNumberGenerator.Create())
             {
                 rng.GetBytes(iv); // Fill the IV with random data
@@ -123,7 +123,7 @@ namespace SSD_Assignment___Banking_Application
             if (inputData == null)
                 throw new ArgumentNullException(nameof(inputData));
 
-            return hmac.ComputeHash(inputData);
+            return hmac.ComputeHash(inputData); // Compute and return the hash using the HMAC algorithm
         }
 
         public byte[] ComputeHash(string input)
@@ -132,26 +132,29 @@ namespace SSD_Assignment___Banking_Application
                 throw new ArgumentNullException(nameof(input));
 
             byte[] inputData = Encoding.UTF8.GetBytes(input);
-            return ComputeHash(inputData);
+            return ComputeHash(inputData); // Compute and return the hash using the HMAC algorithm
         }
 
 
         public bool CompareHashes(byte[] hash1, byte[] hash2)
         {
-            if (hash1.Length != hash2.Length) return false;
+            if (hash1.Length != hash2.Length) return false; // If the hash lengths are different, they are not equal
+            // Compare each byte of the hashes
             for (int i = 0; i < hash1.Length; i++)
             {
                 if (hash1[i] != hash2[i]) return false;
             }
-            return true;
+            return true; // If no differences were found, the hashes are equal
         }
 
         public byte[] CombineByteArrays(params byte[][] arrays)
         {
+            // Calculate the total length of the combined array by summing the lengths of non-null arrays
             int totalLength = arrays.Where(a => a != null).Sum(a => a.Length);
-            byte[] combined = new byte[totalLength];
+            byte[] combined = new byte[totalLength]; // Create a new byte array to hold the combined data
 
             int offset = 0;
+            // Iterate through each array and copy its content into the combined array
             foreach (var array in arrays)
             {
                 if (array != null)

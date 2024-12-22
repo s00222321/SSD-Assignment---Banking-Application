@@ -14,7 +14,7 @@ namespace Banking_Application
         //public String town;
         //public double balance;
 
-        private string accountNo; // Immutable account number
+        private string accountNo; // better access modifiers
         private string name;
         private string address_line_1;
         private string address_line_2;

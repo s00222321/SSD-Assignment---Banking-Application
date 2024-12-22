@@ -38,8 +38,7 @@ namespace Banking_Application
             bool isAdminGroupMember = false;
             int loginCount = 0;
 
-            loginCount = 4; isGroupMember = true; isAdminGroupMember = true; // REMOVE BEFORE SUBMITTING!!!!!!!!!!!!!!
-
+            // get data from .env file
             string domainName = Environment.GetEnvironmentVariable("DOMAIN_NAME");
             string groupName = Environment.GetEnvironmentVariable("GROUP_NAME");
             string adminGroupName = Environment.GetEnvironmentVariable("ADMIN_GROUP_NAME");
@@ -52,8 +51,8 @@ namespace Banking_Application
                 loginCount++;
                 // get user to log in
                 Console.WriteLine("Log in");
-                username = GetValidInput("Username: ", "INVALID USERNAME ENTERED - PLEASE TRY AGAIN");
-                password = GetValidInput("Password: ", "INVALID PASSWORD ENTERED - PLEASE TRY AGAIN");
+                username = GetValidInput("Username", "INVALID USERNAME ENTERED - PLEASE TRY AGAIN");
+                password = GetValidInput("Password", "INVALID PASSWORD ENTERED - PLEASE TRY AGAIN");
                 Console.Clear();
 
                 // check if they are authorised
@@ -70,8 +69,8 @@ namespace Banking_Application
 
                 if (userPrincipal != null)
                 {
-                    isGroupMember = userPrincipal.IsMemberOf(domainContext, IdentityType.SamAccountName, groupName);//Throws Exception If User Principal Is Null
-                    isAdminGroupMember = userPrincipal.IsMemberOf(domainContext, IdentityType.SamAccountName, adminGroupName);//Throws Exception If User Principal Is Null
+                    isGroupMember = userPrincipal.IsMemberOf(domainContext, IdentityType.SamAccountName, groupName);
+                    isAdminGroupMember = userPrincipal.IsMemberOf(domainContext, IdentityType.SamAccountName, adminGroupName);
                 }
 
                 // Encrypt username as it will remain in use
@@ -89,6 +88,7 @@ namespace Banking_Application
                 }
                 else
                 {
+                    // unsuccessful log in
                     Console.WriteLine("User Is Not Authorized To Perform This Action.");
                     Logger.LogTransaction(username, "n/a", "n/a", "Authorization", DateTime.Now, "User Is Not Authorized To Perform This Action", "SSD Banking Application v1.0.0");
                     if (validCreds == false)
@@ -132,7 +132,7 @@ namespace Banking_Application
                     //Console.Write("CHOOSE OPTION: ");
                     //String option = Console.ReadLine();
 
-                    string option = GetValidOption("Choose option: ", new string[] { "1", "2", "3", "4", "5", "6" });   // includes attempts checker and sanitization
+                    string option = GetValidOption("Choose option", new string[] { "1", "2", "3", "4", "5", "6" });   // includes attempts checker and sanitization
 
                     switch (option)
                     {
@@ -282,7 +282,6 @@ namespace Banking_Application
                             Console.WriteLine("1. Current Account.");
                             Console.WriteLine("2. Savings Account.");
                             int accountType = int.Parse(GetValidOption("Choose Account Type", new string[] { "1", "2" }));
-
 
                             // Gather user details with validation for mandatory fields.
                             string name = GetValidInput("Enter Name", "INVALID NAME ENTERED - PLEASE TRY AGAIN");

@@ -52,6 +52,7 @@ namespace Banking_Application
             if (amountToWithdraw <= 0)
                 throw new ArgumentException("Withdrawal amount must be positive.");
 
+            // Locking the balance to ensure thread safety during the withdrawal process
             lock (balanceLock)
             {
                 double availableFunds = getAvailableFunds();
