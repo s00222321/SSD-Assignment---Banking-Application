@@ -7,28 +7,42 @@ using SSD_Assignment___Banking_Application;
 using System.Security.Cryptography;
 using System.Text;
 using System.Collections;
+using DotNetEnv;
+using System.Runtime.CompilerServices;
+
+[assembly: DisablePrivateReflection] // Disable private reflection for the entire assembly
 
 namespace Banking_Application
 {
     public class Program
     {
+        private static readonly int maxAttempts = 3; // Max number of attempts before closing the application
+
         public static void Main(string[] args)
         {
+            // Get the relative path to the .env file
+            string envFilePath = Path.Combine(Environment.CurrentDirectory, "..", "..", "..", ".env");
+
+            // Load the .env file
+            Env.Load(envFilePath);
+
             Logger.SetupEventSource();
             Cryptography_Utilities cryptography = new Cryptography_Utilities();
 
             Data_Access_Layer dal = Data_Access_Layer.getInstance();
-            //dal.loadBankAccounts(); // REMOVED FROM DAL
+            //dal.loadBankAccounts(); // removed as it is not used anymore
+
             string accNo;
             bool running = true;
             bool isGroupMember = false;
             bool isAdminGroupMember = false;
             int loginCount = 0;
+
             loginCount = 4; isGroupMember = true; isAdminGroupMember = true; // REMOVE BEFORE SUBMITTING!!!!!!!!!!!!!!
 
-            string domainName = "ITSLIGO.LAN"; // hide somehow
-            string groupName = "Bank Teller"; //User Group Name HIDE?
-            string adminGroupName = "Bank Teller Administrator";
+            string domainName = Environment.GetEnvironmentVariable("DOMAIN_NAME");
+            string groupName = Environment.GetEnvironmentVariable("GROUP_NAME");
+            string adminGroupName = Environment.GetEnvironmentVariable("ADMIN_GROUP_NAME");
 
             String username = null;
             String password = null;
@@ -38,10 +52,8 @@ namespace Banking_Application
                 loginCount++;
                 // get user to log in
                 Console.WriteLine("Log in");
-                Console.Write("Username: ");
-                username = Console.ReadLine();
-                Console.Write("Password: ");
-                password = Console.ReadLine();
+                username = GetValidInput("Username: ", "INVALID USERNAME ENTERED - PLEASE TRY AGAIN");
+                password = GetValidInput("Password: ", "INVALID PASSWORD ENTERED - PLEASE TRY AGAIN");
                 Console.Clear();
 
                 // check if they are authorised
@@ -65,9 +77,9 @@ namespace Banking_Application
                 // Encrypt username as it will remain in use
                 username = BitConverter.ToString(cryptography.Encrypt(username));
 
-                // then wipe memory??
                 password = null;
                 domainName = null;
+                GC.Collect(); // call garbage collector
 
                 if (validCreds && isGroupMember)
                 {
@@ -117,10 +129,10 @@ namespace Banking_Application
                     Console.WriteLine("4. Make Lodgement");
                     Console.WriteLine("5. Make Withdrawal");
                     Console.WriteLine("6. Exit");
-                    Console.Write("CHOOSE OPTION: ");
-                    String option = Console.ReadLine(); // ONLY A CERTAIN NUMBER OF TRIES NOT TO CRASH OUT??
+                    //Console.Write("CHOOSE OPTION: ");
+                    //String option = Console.ReadLine();
 
-                    int loopCount; // ????
+                    string option = GetValidOption("Choose option: ", new string[] { "1", "2", "3", "4", "5", "6" });   // includes attempts checker and sanitization
 
                     switch (option)
                     {
@@ -320,6 +332,11 @@ namespace Banking_Application
                             // Log new account creation
                             Logger.LogTransaction(username, BitConverter.ToString(cryptography.Encrypt(ba.AccountNo)), BitConverter.ToString(cryptography.Encrypt(ba.Name)), "Account Creation", DateTime.Now, "Account Successfully created", "SSD Banking Application v1.0.0");
 
+                            // Wait for user to press any key before clearing the console
+                            Console.WriteLine("Press any key to continue...");
+                            Console.ReadKey();  // Waits for the user to press a key
+
+                            Console.Clear();  // Clears the console after key press
                             break;
                         case "2":
                             if (isAdminGroupMember) // only allow deletion if user is an admin
@@ -404,7 +421,11 @@ namespace Banking_Application
                                 Logger.LogTransaction(username, "n/a", "n/a", "Account Deletion Attempt", DateTime.Now, "User is not authorised", "SSD Banking Application v1.0.0");
 
                             }
+                            // Wait for user to press any key before clearing the console
+                            Console.WriteLine("Press any key to continue...");
+                            Console.ReadKey();  // Waits for the user to press a key
 
+                            Console.Clear();  // Clears the console after key press
                             break;
                         case "3":
                             //Console.WriteLine("Enter Account Number: ");
@@ -424,9 +445,13 @@ namespace Banking_Application
                             {
                                 Console.WriteLine(ba.ToString());
                                 // Log account viewing
-                                Logger.LogTransaction(username, BitConverter.ToString(cryptography.Encrypt(ba.AccountNo)), BitConverter.ToString(cryptography.Encrypt(ba.Name)), "Account Viewing Attempt", DateTime.Now, "Account does not exist", "SSD Banking Application v1.0.0");
+                                Logger.LogTransaction(username, BitConverter.ToString(cryptography.Encrypt(ba.AccountNo)), BitConverter.ToString(cryptography.Encrypt(ba.Name)), "Account Viewing", DateTime.Now, "Account Information has been viewed", "SSD Banking Application v1.0.0");
                             }
+                            // Wait for user to press any key before clearing the console
+                            Console.WriteLine("Press any key to continue...");
+                            Console.ReadKey();  // Waits for the user to press a key
 
+                            Console.Clear();  // Clears the console after key press
                             break;
                         case "4": //Lodge
                             //Console.WriteLine("Enter Account Number: ");
@@ -473,6 +498,11 @@ namespace Banking_Application
                                 // Log lodgement
                                 Logger.LogTransaction(username, BitConverter.ToString(cryptography.Encrypt(ba.AccountNo)), BitConverter.ToString(cryptography.Encrypt(ba.Name)), "Lodgement", DateTime.Now, $"Amount of {amountToLodge} successfully lodged", "SSD Banking Application v1.0.0");
                             }
+                            // Wait for user to press any key before clearing the console
+                            Console.WriteLine("Press any key to continue...");
+                            Console.ReadKey();  // Waits for the user to press a key
+
+                            Console.Clear();  // Clears the console after key press
                             break;
                         case "5": //Withdraw
                             //Console.WriteLine("Enter Account Number: ");
@@ -539,10 +569,20 @@ namespace Banking_Application
                                     }
                                 }
                             }
+                            // Wait for user to press any key before clearing the console
+                            Console.WriteLine("Press any key to continue...");
+                            Console.ReadKey();  // Waits for the user to press a key
+
+                            Console.Clear();  // Clears the console after key press
                             break;
                         case "6":
                             running = false;
-                            // CALL GARBAGE COLLECTOR
+                            username = null;
+                            dal = null;
+                            cryptography = null;
+                            ba = null;
+                            accNo = null;
+                            GC.Collect(); //call garbage collector
                             break;
                         default:
                             Console.WriteLine("INVALID OPTION CHOSEN - PLEASE TRY AGAIN");
@@ -556,8 +596,16 @@ namespace Banking_Application
         {
             const int maxLength = 150; // Hardcoded maximum length
             string input;
+            int attemptCount = 0;
+
             do
             {
+                if (attemptCount >= maxAttempts)
+                {
+                    Console.WriteLine("You have exceeded the maximum number of attempts. Try again later. Application exiting.");
+                    Environment.Exit(0); // Close the application if max attempts are reached
+                }
+
                 Console.Write($"{prompt}: ");
                 input = Console.ReadLine();
 
@@ -578,6 +626,8 @@ namespace Banking_Application
                     // Sanitise input by removing unwanted characters
                     input = SanitizeInput(input);
                 }
+                // Increment attempt count after each failed attempt
+                attemptCount++;
             } while (string.IsNullOrEmpty(input));
 
             return input;
@@ -617,9 +667,16 @@ namespace Banking_Application
         {
             const int maxLength = 20; // Reasonable maximum length for numeric input
             double value;
+            int attemptCount = 0;
 
             do
             {
+                if (attemptCount >= maxAttempts)
+                {
+                    Console.WriteLine("You have exceeded the maximum number of attempts. Try again later. Application exiting.");
+                    Environment.Exit(0); // Close the application if max attempts are reached
+                }
+
                 Console.Write($"{prompt}: ");
                 string input = Console.ReadLine();
 
@@ -640,6 +697,7 @@ namespace Banking_Application
                 }
 
                 Console.WriteLine(errorMessage);
+                attemptCount++;
             } while (true);
         }
 
@@ -648,8 +706,16 @@ namespace Banking_Application
         private static string GetValidOption(string prompt, string[] options)
         {
             string input;
+            int attemptCount = 0;
+
             do
             {
+                if (attemptCount >= maxAttempts)
+                {
+                    Console.WriteLine("You have exceeded the maximum number of attempts. Try again later. Application exiting.");
+                    Environment.Exit(0); // Close the application if max attempts are reached
+                }
+
                 Console.Write($"{prompt}: ");
                 // Read and sanitize the input
                 input = Console.ReadLine()?.Trim().ToLower(); // Trim and make the input lowercase for case-insensitive comparison
@@ -662,7 +728,7 @@ namespace Banking_Application
 
                 // Show error message if the input is invalid
                 Console.WriteLine("INVALID OPTION CHOSEN - PLEASE TRY AGAIN");
-
+                attemptCount++;
             } while (true);
         }
 
@@ -670,9 +736,16 @@ namespace Banking_Application
         private static string GetValidAccountNumber(string prompt, string errorMessage)
         {
             string accountNumber;
+            int attemptCount = 0;
 
             do
             {
+                if (attemptCount >= maxAttempts)
+                {
+                    Console.WriteLine("You have exceeded the maximum number of attempts. Try again later. Application exiting.");
+                    Environment.Exit(0); // Close the application if max attempts are reached
+                }
+
                 Console.Write($"{prompt}: ");
                 accountNumber = Console.ReadLine()?.Trim(); // Trim any extra spaces
 
@@ -692,7 +765,7 @@ namespace Banking_Application
                 {
                     Console.WriteLine("INVALID GUID FORMAT. PLEASE ENTER A VALID ACCOUNT NUMBER.");
                 }
-
+                attemptCount++;
             } while (true);
         }
 

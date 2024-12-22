@@ -9,14 +9,14 @@ namespace Banking_Application
     {
         private Cryptography_Utilities cryptoUtils;
 
-
-        // private List<Bank_Account> accounts;  // NOT NEEDED ANYMORE
-        public static String databaseName = "Banking Database.db"; // HARD CODED!!!! WTF PUT AS ENV OR SOMETHING
-        private static Data_Access_Layer instance = new Data_Access_Layer(); // USE REFLECTION OR SMTH??
+        // private List<Bank_Account> accounts;  // not needed anymore
+        //public static String databaseName = "Banking Database.db";
+        private static string databaseName = Environment.GetEnvironmentVariable("DATABASE_NAME");
+        private static Data_Access_Layer instance = new Data_Access_Layer();
 
         private Data_Access_Layer()//Singleton Design Pattern (For Concurrency Control) - Use getInstance() Method Instead.
         {
-            // accounts = new List<Bank_Account>(); // BAD FOR MEMORY AND SECURITY
+            // accounts = new List<Bank_Account>(); // bad
 
             // Create CryptoUtils object
             cryptoUtils = new Cryptography_Utilities();
@@ -29,12 +29,11 @@ namespace Banking_Application
 
         private SqliteConnection getDatabaseConnection()
         {
-
             String databaseConnectionString = new SqliteConnectionStringBuilder()
             {
-                DataSource = Data_Access_Layer.databaseName,
+                DataSource = databaseName,
                 Mode = SqliteOpenMode.ReadWriteCreate,
-                Cache = SqliteCacheMode.Private // USE PRIVATE CASHE FOR STRICTER ISOLATION
+                Cache = SqliteCacheMode.Private // use private cache mode for security
             }.ToString();
 
             return new SqliteConnection(databaseConnectionString);
@@ -198,7 +197,7 @@ namespace Banking_Application
                 else
                     ba = (Savings_Account)ba;
 
-                Console.WriteLine(ba.AccountNo); // REMOVE THIS
+                Console.WriteLine("Adding bank account: " + ba.AccountNo);
 
                 // Encrypt each field
                 byte[] encryptedAccountNo = cryptoUtils.Encrypt(ba.AccountNo);
@@ -214,47 +213,62 @@ namespace Banking_Application
                 using (var connection = getDatabaseConnection())
                 {
                     connection.Open();
-                    var command = connection.CreateCommand();
+                    var transaction = connection.BeginTransaction(); // Start a transaction
 
-                    // USED PREPARED STATEMENTS TO PREVENT SQL INJECTION
-                    command.CommandText = @"
-                    INSERT INTO Encrypted_Bank_Accounts 
-                    (accountNo, name, addressLine1, addressLine2, addressLine3, town, balance, accountType, overdraftAmount, interestRate, hashValue, hashAccountNo)
-                    VALUES (@accountNo, @name, @addressLine1, @addressLine2, @addressLine3, @town, @balance, @accountType, @overdraftAmount, @interestRate, @hashValue, @hashAccountNo)";
-
-                    // Add common parameters
-                    command.Parameters.AddWithValue("@accountNo", encryptedAccountNo);
-                    command.Parameters.AddWithValue("@name", encryptedName);
-                    command.Parameters.AddWithValue("@addressLine1", encryptedAddressLine1);
-                    command.Parameters.AddWithValue("@addressLine2", encryptedAddressLine2);
-                    command.Parameters.AddWithValue("@addressLine3", encryptedAddressLine3);
-                    command.Parameters.AddWithValue("@town", encryptedTown);
-                    command.Parameters.AddWithValue("@balance", ba.Balance);
-                    command.Parameters.AddWithValue("@accountType", ba.GetType() == typeof(Current_Account) ? 1 : 2);
-                    command.Parameters.AddWithValue("@hashValue", hashValue);
-                    command.Parameters.AddWithValue("@hashAccountNo", cryptoUtils.ComputeHash(ba.AccountNo));
-
-                    // Add type-specific parameters
-                    if (ba.GetType() == typeof(Current_Account))
+                    try
                     {
-                        Current_Account ca = (Current_Account)ba;
-                        command.Parameters.AddWithValue("@overdraftAmount", ca.OverdraftAmount);
-                        command.Parameters.AddWithValue("@interestRate", DBNull.Value);
+                        var command = connection.CreateCommand();
+
+                        // Insert the bank account into the Encrypted_Bank_Accounts table
+                        command.CommandText = @"
+                            INSERT INTO Encrypted_Bank_Accounts 
+                            (accountNo, name, addressLine1, addressLine2, addressLine3, town, balance, accountType, overdraftAmount, interestRate, hashValue, hashAccountNo)
+                            VALUES (@accountNo, @name, @addressLine1, @addressLine2, @addressLine3, @town, @balance, @accountType, @overdraftAmount, @interestRate, @hashValue, @hashAccountNo)";
+
+                        // Add parameters for the account
+                        command.Parameters.AddWithValue("@accountNo", encryptedAccountNo);
+                        command.Parameters.AddWithValue("@name", encryptedName);
+                        command.Parameters.AddWithValue("@addressLine1", encryptedAddressLine1);
+                        command.Parameters.AddWithValue("@addressLine2", encryptedAddressLine2);
+                        command.Parameters.AddWithValue("@addressLine3", encryptedAddressLine3);
+                        command.Parameters.AddWithValue("@town", encryptedTown);
+                        command.Parameters.AddWithValue("@balance", ba.Balance);
+                        command.Parameters.AddWithValue("@accountType", ba.GetType() == typeof(Current_Account) ? 1 : 2);
+                        command.Parameters.AddWithValue("@hashValue", hashValue);
+                        command.Parameters.AddWithValue("@hashAccountNo", cryptoUtils.ComputeHash(ba.AccountNo));
+
+                        // Add type-specific parameters (Current Account or Savings Account)
+                        if (ba.GetType() == typeof(Current_Account))
+                        {
+                            Current_Account ca = (Current_Account)ba;
+                            command.Parameters.AddWithValue("@overdraftAmount", ca.OverdraftAmount);
+                            command.Parameters.AddWithValue("@interestRate", DBNull.Value);
+                        }
+                        else
+                        {
+                            Savings_Account sa = (Savings_Account)ba;
+                            command.Parameters.AddWithValue("@overdraftAmount", DBNull.Value);
+                            command.Parameters.AddWithValue("@interestRate", sa.InterestRate);
+                        }
+
+                        // Execute the bank account insertion
+                        command.ExecuteNonQuery();
+
+                        // Commit the transaction
+                        transaction.Commit();
+
+                        ba = null; // Clear the bank account object after successful insertion
+                        return true; // Return success
                     }
-                    else
+                    catch (Exception e)
                     {
-                        Savings_Account sa = (Savings_Account)ba;
-                        command.Parameters.AddWithValue("@overdraftAmount", DBNull.Value);
-                        command.Parameters.AddWithValue("@interestRate", sa.InterestRate);
+                        // If an error occurs, roll back the transaction
+                        transaction.Rollback();
+                        Console.Error.WriteLine($"Error: {e.Message}");
+                        Logger.LogError("An error occurred while adding a bank account. " + e);
+                        return false; // Return failure
                     }
-
-                    command.ExecuteNonQuery();
-
-                    // ADD LOGGING
                 }
-                ba = null;
-                // CALL GB COLLECTOR??
-                return true;
             }
             catch (ArgumentException e)
             {
@@ -294,96 +308,104 @@ namespace Banking_Application
         {
             try
             {
-                if (!File.Exists(Data_Access_Layer.databaseName))
+                if (!File.Exists(databaseName))
                     initialiseDatabase();
                 else
                 {
-                    // UPDATED THIS SO IT ONLY GETS THE INDIVIDUAL RECORD WHEN REQUIRED
+                    // updated to only get individual account when needed
                     using (var connection = getDatabaseConnection())
                     {
                         connection.Open();
-                        var command = connection.CreateCommand();
-                        command.CommandText = "SELECT * FROM Encrypted_Bank_Accounts WHERE hashAccountNo = @hashAccountNo";
-                        command.Parameters.AddWithValue("@hashAccountNo", cryptoUtils.ComputeHash(accNo));
-                        SqliteDataReader dr = command.ExecuteReader();
 
-                        while (dr.Read())
+                        using (var transaction = connection.BeginTransaction()) // Begin a transaction
                         {
-                            // Read the encrypted fields
-                            byte[] encryptedAccountNo = (byte[])dr["accountNo"];
-                            byte[] encryptedName = (byte[])dr["name"];
-                            byte[]? encryptedAddressLine1 = dr["addressLine1"] as byte[];
-                            byte[]? encryptedAddressLine2 = dr["addressLine2"] as byte[];
-                            byte[]? encryptedAddressLine3 = dr["addressLine3"] as byte[];
-                            byte[] encryptedTown = (byte[])dr["town"];
-                            double balance = dr.GetDouble(dr.GetOrdinal("balance"));
-                            int accountType = dr.GetInt32(dr.GetOrdinal("accountType"));
-                            double? overdraftAmount = dr.IsDBNull(dr.GetOrdinal("overdraftAmount")) ? (double?)null : dr.GetDouble(dr.GetOrdinal("overdraftAmount"));
-                            double? interestRate = dr.IsDBNull(dr.GetOrdinal("interestRate")) ? (double?)null : dr.GetDouble(dr.GetOrdinal("interestRate"));
-                            byte[] storedHashValue = (byte[])dr["hashValue"];
-                            byte[] accountNoHash = cryptoUtils.ComputeHash(accNo);
+                            var command = connection.CreateCommand();
+                            command.Transaction = transaction; // Assign the transaction to the command
 
-                            // Decrypt the fields
-                            string decryptedAccountNo = Encoding.UTF8.GetString(cryptoUtils.Decrypt(encryptedAccountNo));
-                            string decryptedName = Encoding.UTF8.GetString(cryptoUtils.Decrypt(encryptedName));
-                            string? decryptedAddressLine1 = encryptedAddressLine1 != null ? Encoding.UTF8.GetString(cryptoUtils.Decrypt(encryptedAddressLine1)) : null;
-                            string? decryptedAddressLine2 = encryptedAddressLine2 != null ? Encoding.UTF8.GetString(cryptoUtils.Decrypt(encryptedAddressLine2)) : null;
-                            string? decryptedAddressLine3 = encryptedAddressLine3 != null ? Encoding.UTF8.GetString(cryptoUtils.Decrypt(encryptedAddressLine3)) : null;
-                            string decryptedTown = Encoding.UTF8.GetString(cryptoUtils.Decrypt(encryptedTown));
+                            command.CommandText = "SELECT * FROM Encrypted_Bank_Accounts WHERE hashAccountNo = @hashAccountNo";
+                            command.Parameters.AddWithValue("@hashAccountNo", cryptoUtils.ComputeHash(accNo));
+                            SqliteDataReader dr = command.ExecuteReader();
 
-                            // Combine decrypted fields for hash computation
-                            byte[] computedHashValue = cryptoUtils.ComputeHash(
-                                cryptoUtils.CombineByteArrays(
-                                    Encoding.UTF8.GetBytes(decryptedAccountNo), // Use decrypted account number
-                                    Encoding.UTF8.GetBytes(decryptedName),     // Use decrypted name
-                                    decryptedAddressLine1 != null ? Encoding.UTF8.GetBytes(decryptedAddressLine1) : new byte[0], // Replace null with empty byte array
-                                    decryptedAddressLine2 != null ? Encoding.UTF8.GetBytes(decryptedAddressLine2) : new byte[0],
-                                    decryptedAddressLine3 != null ? Encoding.UTF8.GetBytes(decryptedAddressLine3) : new byte[0],
-                                    Encoding.UTF8.GetBytes(decryptedTown),     // Use decrypted town
-                                    BitConverter.GetBytes(balance),           // Use consistent binary representation
-                                    BitConverter.GetBytes(accountType),
-                                    BitConverter.GetBytes(overdraftAmount ?? 0.0), // Default null to 0.0
-                                    BitConverter.GetBytes(interestRate ?? 0.0),   // Default null to 0.0
-                                    cryptoUtils.ComputeHash(accNo) // Compute hash of decrypted account number
-                                )
-                            );
-
-                            // Verify hash value
-                            if (!cryptoUtils.CompareHashes(computedHashValue, storedHashValue))
+                            while (dr.Read())
                             {
-                                throw new CryptographicException("Data integrity check failed. The hash value does not match.");
-                            }
+                                // Read the encrypted fields
+                                byte[] encryptedAccountNo = (byte[])dr["accountNo"];
+                                byte[] encryptedName = (byte[])dr["name"];
+                                byte[]? encryptedAddressLine1 = dr["addressLine1"] as byte[];
+                                byte[]? encryptedAddressLine2 = dr["addressLine2"] as byte[];
+                                byte[]? encryptedAddressLine3 = dr["addressLine3"] as byte[];
+                                byte[] encryptedTown = (byte[])dr["town"];
+                                double balance = dr.GetDouble(dr.GetOrdinal("balance"));
+                                int accountType = dr.GetInt32(dr.GetOrdinal("accountType"));
+                                double? overdraftAmount = dr.IsDBNull(dr.GetOrdinal("overdraftAmount")) ? (double?)null : dr.GetDouble(dr.GetOrdinal("overdraftAmount"));
+                                double? interestRate = dr.IsDBNull(dr.GetOrdinal("interestRate")) ? (double?)null : dr.GetDouble(dr.GetOrdinal("interestRate"));
+                                byte[] storedHashValue = (byte[])dr["hashValue"];
+                                byte[] accountNoHash = cryptoUtils.ComputeHash(accNo);
 
-                            // Create and return the appropriate account type
-                            if (accountType == Account_Type.Current_Account)
-                            {
-                                return new Current_Account
+                                // Decrypt the fields
+                                string decryptedAccountNo = Encoding.UTF8.GetString(cryptoUtils.Decrypt(encryptedAccountNo));
+                                string decryptedName = Encoding.UTF8.GetString(cryptoUtils.Decrypt(encryptedName));
+                                string? decryptedAddressLine1 = encryptedAddressLine1 != null ? Encoding.UTF8.GetString(cryptoUtils.Decrypt(encryptedAddressLine1)) : null;
+                                string? decryptedAddressLine2 = encryptedAddressLine2 != null ? Encoding.UTF8.GetString(cryptoUtils.Decrypt(encryptedAddressLine2)) : null;
+                                string? decryptedAddressLine3 = encryptedAddressLine3 != null ? Encoding.UTF8.GetString(cryptoUtils.Decrypt(encryptedAddressLine3)) : null;
+                                string decryptedTown = Encoding.UTF8.GetString(cryptoUtils.Decrypt(encryptedTown));
+
+                                // Combine decrypted fields for hash computation
+                                byte[] computedHashValue = cryptoUtils.ComputeHash(
+                                    cryptoUtils.CombineByteArrays(
+                                        Encoding.UTF8.GetBytes(decryptedAccountNo), // Use decrypted account number
+                                        Encoding.UTF8.GetBytes(decryptedName),     // Use decrypted name
+                                        decryptedAddressLine1 != null ? Encoding.UTF8.GetBytes(decryptedAddressLine1) : new byte[0], // Replace null with empty byte array
+                                        decryptedAddressLine2 != null ? Encoding.UTF8.GetBytes(decryptedAddressLine2) : new byte[0],
+                                        decryptedAddressLine3 != null ? Encoding.UTF8.GetBytes(decryptedAddressLine3) : new byte[0],
+                                        Encoding.UTF8.GetBytes(decryptedTown),     // Use decrypted town
+                                        BitConverter.GetBytes(balance),           // Use consistent binary representation
+                                        BitConverter.GetBytes(accountType),
+                                        BitConverter.GetBytes(overdraftAmount ?? 0.0), // Default null to 0.0
+                                        BitConverter.GetBytes(interestRate ?? 0.0),   // Default null to 0.0
+                                        cryptoUtils.ComputeHash(accNo) // Compute hash of decrypted account number
+                                    )
+                                );
+
+                                // Verify hash value
+                                if (!cryptoUtils.CompareHashes(computedHashValue, storedHashValue))
                                 {
-                                    AccountNo = decryptedAccountNo,
-                                    Name = decryptedName,
-                                    AddressLine1 = decryptedAddressLine1,
-                                    AddressLine2 = decryptedAddressLine2,
-                                    AddressLine3 = decryptedAddressLine3,
-                                    Town = decryptedTown,
-                                    Balance = balance,
-                                    OverdraftAmount = overdraftAmount ?? 0.0
-                                };
-                            }
-                            else if (accountType == Account_Type.Savings_Account)
-                            {
-                                return new Savings_Account
+                                    throw new CryptographicException("Data integrity check failed. The hash value does not match.");
+                                }
+
+                                // Commit the transaction if everything is fine
+                                transaction.Commit();
+
+                                // Create and return the appropriate account type
+                                if (accountType == Account_Type.Current_Account)
                                 {
-                                    AccountNo = decryptedAccountNo,
-                                    Name = decryptedName,
-                                    AddressLine1 = decryptedAddressLine1,
-                                    AddressLine2 = decryptedAddressLine2,
-                                    AddressLine3 = decryptedAddressLine3,
-                                    Town = decryptedTown,
-                                    Balance = balance,
-                                    InterestRate = interestRate ?? 0.0
-                                };
+                                    return new Current_Account
+                                    {
+                                        AccountNo = decryptedAccountNo,
+                                        Name = decryptedName,
+                                        AddressLine1 = decryptedAddressLine1,
+                                        AddressLine2 = decryptedAddressLine2,
+                                        AddressLine3 = decryptedAddressLine3,
+                                        Town = decryptedTown,
+                                        Balance = balance,
+                                        OverdraftAmount = overdraftAmount ?? 0.0
+                                    };
+                                }
+                                else if (accountType == Account_Type.Savings_Account)
+                                {
+                                    return new Savings_Account
+                                    {
+                                        AccountNo = decryptedAccountNo,
+                                        Name = decryptedName,
+                                        AddressLine1 = decryptedAddressLine1,
+                                        AddressLine2 = decryptedAddressLine2,
+                                        AddressLine3 = decryptedAddressLine3,
+                                        Town = decryptedTown,
+                                        Balance = balance,
+                                        InterestRate = interestRate ?? 0.0
+                                    };
+                                }
                             }
-                            // LOGGING
                         }
                     }
                 }
@@ -446,15 +468,35 @@ namespace Banking_Application
                     using (var connection = getDatabaseConnection())
                     {
                         connection.Open();
-                        var command = connection.CreateCommand();
-                        // PREPARED STATEMENT FOR SQL INJECTION PREVENTION
-                        command.CommandText = "DELETE * FROM Encrypted_Bank_Accounts WHERE hashAccountNo = @hashAccountNo";
-                        command.Parameters.AddWithValue("@hashAccountNo", cryptoUtils.ComputeHash(accNo));
-                        command.ExecuteNonQuery();
+                        var transaction = connection.BeginTransaction(); // Start the transaction
 
-                        // ADD LOGGING
+                        try
+                        {
+                            var command = connection.CreateCommand();
+
+                            // Prepare the command for deleting the bank account record
+                            command.CommandText = "DELETE FROM Encrypted_Bank_Accounts WHERE hashAccountNo = @hashAccountNo";
+                            command.Parameters.AddWithValue("@hashAccountNo", cryptoUtils.ComputeHash(accNo));
+
+                            // Execute the deletion command
+                            command.ExecuteNonQuery();
+
+                            // Commit the transaction
+                            transaction.Commit();
+
+                            return true; // Return success if the account was deleted
+                        }
+                        catch (Exception ex)
+                        {
+                            // Roll back the transaction in case of an error
+                            transaction.Rollback();
+
+                            // Log the error and return failure
+                            Console.WriteLine($"An error occurred while trying to close the bank account: {ex.Message}");
+                            Logger.LogError("An error occurred while closing a bank account. " + ex);
+                            return false;
+                        }
                     }
-                    return true;
                 }
                 else { return false; }
             }
@@ -508,23 +550,45 @@ namespace Banking_Application
             {
                 if (toLodgeTo != null)
                 {
-                    toLodgeTo.lodge(amountToLodge);
-
-                    // Recalculate the hash value
-                    byte[] updatedHashValue = cryptoUtils.GenerateHashForSendingToDB(toLodgeTo);
-
-                    // Update the database with the new balance and hash value
                     using (var connection = getDatabaseConnection())
                     {
                         connection.Open();
-                        var command = connection.CreateCommand();
-                        command.CommandText = @"UPDATE Encrypted_Bank_Accounts SET balance = @balance, hashValue = @hashValue WHERE hashAccountNo = @hashAccountNo";
-                        command.Parameters.AddWithValue("@balance", toLodgeTo.Balance);
-                        command.Parameters.AddWithValue("@hashValue", updatedHashValue);
-                        command.Parameters.AddWithValue("@hashAccountNo", cryptoUtils.ComputeHash(accNo));
-                        command.ExecuteNonQuery();
+                        var transaction = connection.BeginTransaction(); // Begin the transaction
+
+                        try
+                        {
+                            // Call lodge method to update the balance
+                            toLodgeTo.lodge(amountToLodge);
+
+                            // Recalculate the hash value
+                            byte[] updatedHashValue = cryptoUtils.GenerateHashForSendingToDB(toLodgeTo);
+
+                            // Update the database with the new balance and hash value
+                            var command = connection.CreateCommand();
+                            command.CommandText = @"UPDATE Encrypted_Bank_Accounts SET balance = @balance, hashValue = @hashValue WHERE hashAccountNo = @hashAccountNo";
+                            command.Parameters.AddWithValue("@balance", toLodgeTo.Balance);
+                            command.Parameters.AddWithValue("@hashValue", updatedHashValue);
+                            command.Parameters.AddWithValue("@hashAccountNo", cryptoUtils.ComputeHash(accNo));
+
+                            // Execute the update command
+                            command.ExecuteNonQuery();
+
+                            // Commit the transaction
+                            transaction.Commit();
+
+                            return true;
+                        }
+                        catch (Exception ex)
+                        {
+                            // Rollback the transaction in case of an error
+                            transaction.Rollback();
+
+                            // Log the error and return failure
+                            Console.WriteLine($"An error occurred while trying to lodge to a bank account: {ex.Message}");
+                            Logger.LogError("An error occurred while trying to lodge to a bank account. " + ex);
+                            return false;
+                        }
                     }
-                    return true;
                 }
                 else { return false; }
                 // CALL GB COLLECTOR??
@@ -576,26 +640,51 @@ namespace Banking_Application
         {
             bool result = false;
             Bank_Account toWithdrawFrom = findBankAccountByAccNo(accNo);
-            result = toWithdrawFrom.withdraw(amountToWithdraw);
+
+            // Perform the withdrawal operation on the Bank_Account object
+            result = toWithdrawFrom?.withdraw(amountToWithdraw) ?? false;
 
             try
             {
-                if (toWithdrawFrom != null || result == false)
+                if (toWithdrawFrom != null && result)
                 {
-                    byte[] updatedHashValue = cryptoUtils.GenerateHashForSendingToDB(toWithdrawFrom);
-
+                    // Start a transaction
                     using (var connection = getDatabaseConnection())
                     {
                         connection.Open();
-                        var command = connection.CreateCommand();
-                        // Use prepared statement to prevent SQL injection
-                        command.CommandText = "UPDATE Encrypted_Bank_Accounts SET balance = @balance, hashValue = @hashValue WHERE hashAccountNo = @hashAccountNo";
-                        command.Parameters.AddWithValue("@balance", toWithdrawFrom.Balance);
-                        command.Parameters.AddWithValue("@hashValue", updatedHashValue);
-                        command.Parameters.AddWithValue("@hashAccountNo", cryptoUtils.ComputeHash(accNo));
-                        command.ExecuteNonQuery();
+                        var transaction = connection.BeginTransaction(); // Begin the transaction
+
+                        try
+                        {
+                            // Recalculate the hash value after the withdrawal
+                            byte[] updatedHashValue = cryptoUtils.GenerateHashForSendingToDB(toWithdrawFrom);
+
+                            // Update the balance and hash value in the database
+                            var command = connection.CreateCommand();
+                            command.CommandText = @"UPDATE Encrypted_Bank_Accounts SET balance = @balance, hashValue = @hashValue WHERE hashAccountNo = @hashAccountNo";
+                            command.Parameters.AddWithValue("@balance", toWithdrawFrom.Balance);
+                            command.Parameters.AddWithValue("@hashValue", updatedHashValue);
+                            command.Parameters.AddWithValue("@hashAccountNo", cryptoUtils.ComputeHash(accNo));
+
+                            // Execute the update command
+                            command.ExecuteNonQuery();
+
+                            // Commit the transaction if everything is successful
+                            transaction.Commit();
+
+                            return true; // Return true to indicate success
+                        }
+                        catch (Exception ex)
+                        {
+                            // Rollback the transaction in case of an error
+                            transaction.Rollback();
+
+                            // Log the error and return failure
+                            Console.WriteLine($"An error occurred while trying to withdraw from a bank account: {ex.Message}");
+                            Logger.LogError("An error occurred while trying to withdraw from a bank account. " + ex);
+                            return false;
+                        }
                     }
-                    return true;
                 }
                 else { return false; }
             }

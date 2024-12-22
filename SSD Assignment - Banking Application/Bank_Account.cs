@@ -23,6 +23,7 @@ namespace Banking_Application
         private double balance;
 
         protected readonly object balanceLock = new object(); // Thread safety for balance
+
         protected Bank_Account()
         {
             this.accountNo = GenerateAccountNumber();
@@ -155,6 +156,8 @@ namespace Banking_Application
 
         public override string ToString()
         {
+            Console.OutputEncoding = System.Text.Encoding.UTF8; // Enable currency symbol
+
             return $"\nAccount No: {accountNo}\n" +
                    $"Name: {name}\n" +
                    $"Address Line 1: {address_line_1}\n" +

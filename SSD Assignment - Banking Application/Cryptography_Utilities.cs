@@ -1,7 +1,5 @@
 ﻿using Banking_Application;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -12,7 +10,7 @@ namespace SSD_Assignment___Banking_Application
     {
         internal readonly Aes aes;
         private readonly HMACSHA256 hmac;
-        private const string KeyFilePath = "bankingAppKey.dat"; // PUT INTO ENV FILE
+        private static string KeyFilePath = Environment.GetEnvironmentVariable("KEY_FILE_PATH");
 
         public Cryptography_Utilities()
         {
@@ -74,7 +72,7 @@ namespace SSD_Assignment___Banking_Application
 
             // Generate a random IV
             byte[] iv = new byte[aes.BlockSize / 8]; // AES block size is typically 128 bits
-            using (var rng = new RNGCryptoServiceProvider())
+            using (var rng = RandomNumberGenerator.Create())
             {
                 rng.GetBytes(iv); // Fill the IV with random data
             }
